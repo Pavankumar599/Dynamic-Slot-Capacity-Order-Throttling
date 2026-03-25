@@ -11,7 +11,7 @@ In quick-commerce systems, accepting every incoming order can overload the wareh
 
 This project builds a practical decision engine that checks whether a new order should be **ACCEPTED** or **REJECTED** in real time based on operational conditions such as rider availability, current queue load, delivery distance, and current delivery performance.
 
-![High-Level Flow](path-to-your-screenshot.png)
+![High-Level Flow](Screenshot 2026-03-25 at 3.09.28 PM.png)
 
 ## How It Works
 
