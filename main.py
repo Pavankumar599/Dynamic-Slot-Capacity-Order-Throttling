@@ -38,7 +38,7 @@ def estimate_queue_wait(
     orders_in_queue: int,
     active_riders: int,
     avg_delivery_time: float
-) -> float:
+    ) -> float:
     rider_load = (orders_in_queue + 1) / max(active_riders, 1)
     return max(0.0, rider_load - 1.0) * avg_delivery_time * 0.6
 

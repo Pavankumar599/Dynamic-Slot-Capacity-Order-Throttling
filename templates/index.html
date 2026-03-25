@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order Accept / Reject Engine</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>Dynamic Slot Capacity & Order Throttling</h1>
+    <p class="subtitle">
+      Enter live warehouse and order details to decide whether the order should be ACCEPTED or REJECTED.
+    </p>
+
+    <div class="card">
+      <form id="orderForm">
+        <div class="grid">
+          <div class="field">
+            <label for="warehouse_id">Warehouse ID</label>
+            <input type="text" id="warehouse_id" name="warehouse_id" placeholder="WH_101" required />
+          </div>
+
+          <div class="field">
+            <label for="active_riders">Active Riders</label>
+            <input type="number" id="active_riders" name="active_riders" min="0" value="10" required />
+          </div>
+
+          <div class="field">
+            <label for="orders_in_queue">Orders in Queue</label>
+            <input type="number" id="orders_in_queue" name="orders_in_queue" min="0" value="8" required />
+          </div>
+
+          <div class="field">
+            <label for="avg_delivery_time">Avg Delivery Time (mins)</label>
+            <input type="number" step="0.01" id="avg_delivery_time" name="avg_delivery_time" min="0" value="25" required />
+          </div>
+
+          <div class="field">
+            <label for="distance">Distance (km)</label>
+            <input type="number" step="0.01" id="distance" name="distance" min="0" value="4.5" required />
+          </div>
+
+          <div class="field">
+            <label for="items_count">Items Count</label>
+            <input type="number" id="items_count" name="items_count" min="0" value="6" required />
+          </div>
+
+          <div class="field">
+            <label for="order_created_time">Order Created Time</label>
+            <input type="datetime-local" id="order_created_time" name="order_created_time" required />
+          </div>
+        </div>
+
+        <button type="submit">Check Decision</button>
+      </form>
+    </div>
+
+    <div id="result" class="card hidden"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById("orderForm");
+    const resultBox = document.getElementById("result");
+    const dateInput = document.getElementById("order_created_time");
+
+    // Set default datetime-local value
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+    dateInput.value = local;
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const payload = {
+        warehouse_id: document.getElementById("warehouse_id").value,
+        active_riders: document.getElementById("active_riders").value,
+        orders_in_queue: document.getElementById("orders_in_queue").value,
+        avg_delivery_time: document.getElementById("avg_delivery_time").value,
+        distance: document.getElementById("distance").value,
+        items_count: document.getElementById("items_count").value,
+        order_created_time: document.getElementById("order_created_time").value,
+      };
+
+      resultBox.classList.remove("accept", "reject");
+      resultBox.innerHTML = "Loading...";
+      resultBox.classList.remove("hidden");
+
+      try {
+        const response = await fetch("/decide", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          resultBox.innerHTML = `<h2>Error</h2><p>${data.error || "Something went wrong"}</p>`;
+          return;
+        }
+
+        const decisionClass = data.decision === "ACCEPT" ? "accept" : "reject";
+        resultBox.classList.add(decisionClass);
+
+        resultBox.innerHTML = `
+          <h2>Decision: ${data.decision}</h2>
+          <p><strong>Reason:</strong> ${data.reason}</p>
+          <p><strong>Warehouse ID:</strong> ${data.warehouse_id}</p>
+          <p><strong>Predicted ETA:</strong> ${data.predicted_eta} mins</p>
+          <p><strong>SLA:</strong> ${data.sla_minutes} mins</p>
+          <p><strong>Dynamic Queue Limit:</strong> ${data.dynamic_queue_limit}</p>
+          <p><strong>Queue After Accept:</strong> ${data.queue_after_accept}</p>
+          <p><strong>Peak Hour:</strong> ${data.peak_hour ? "Yes" : "No"}</p>
+
+          <h3>Breakdown</h3>
+          <ul>
+            <li><strong>Pick-Pack Time:</strong> ${data.details.pick_pack_time} mins</li>
+            <li><strong>Travel Time:</strong> ${data.details.travel_time} mins</li>
+            <li><strong>Queue Wait:</strong> ${data.details.queue_wait} mins</li>
+            <li><strong>Congestion Penalty:</strong> ${data.details.congestion_penalty} mins</li>
+            <li><strong>Peak Penalty:</strong> ${data.details.peak_penalty} mins</li>
+          </ul>
+        `;
+      } catch (error) {
+        resultBox.innerHTML = `<h2>Error</h2><p>Could not connect to backend.</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
